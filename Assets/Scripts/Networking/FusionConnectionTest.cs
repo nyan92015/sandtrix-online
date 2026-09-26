@@ -22,7 +22,10 @@ namespace SandTetris
     /// </summary>
     public class FusionConnectionTest : MonoBehaviour, INetworkRunnerCallbacks
     {
-        const string RoomName = "sandtris-test-room";
+        const string RoomName = "sandtris-shared-room";
+
+        [Tooltip("PlayerNetworkSync + NetworkObject をアタッチしたプレハブ")]
+        [SerializeField] NetworkPrefabRef playerPrefab;
 
         NetworkRunner _runner;
 
@@ -34,14 +37,10 @@ namespace SandTetris
                 return;
             }
 
-            GUI.Label(new Rect(20, 20, 400, 30), "Sand Tetris - Fusion 接続テスト");
-            if (GUI.Button(new Rect(20, 60, 200, 40), "Host として起動"))
+            GUI.Label(new Rect(20, 20, 400, 30), "Sand Tetris - Fusion 接続テスト (Shared Mode)");
+            if (GUI.Button(new Rect(20, 60, 200, 40), "参加する"))
             {
-                _ = StartConnection(GameMode.Host);
-            }
-            if (GUI.Button(new Rect(20, 110, 200, 40), "Client として参加"))
-            {
-                _ = StartConnection(GameMode.Client);
+                _ = StartConnection(GameMode.Shared);
             }
         }
 
@@ -79,6 +78,13 @@ namespace SandTetris
         public void OnPlayerJoined(NetworkRunner runner, PlayerRef player)
         {
             Debug.Log($"[Fusion] プレイヤーが参加しました: {player}");
+
+            // Shared Modeでは、各クライアントが「自分自身の分身」を自分で生成する。
+            // 生成した本人に自動的に StateAuthority が与えられる。
+            if (player == runner.LocalPlayer)
+            {
+                runner.Spawn(playerPrefab, Vector3.zero, Quaternion.identity, player);
+            }
         }
 
         public void OnPlayerLeft(NetworkRunner runner, PlayerRef player)

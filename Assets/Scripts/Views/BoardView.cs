@@ -57,6 +57,9 @@ namespace SandTetris
         ScreenShakeEffect _screenShake;
         AudioObserver _audio;
 
+        /// <summary>自分のBoardModel。PlayerNetworkSyncが送信元データとして参照する。</summary>
+        public BoardModel Model => _model;
+
         void Start()
         {
             int widthPx = gridWidthInBlocks * blockSize;
