@@ -37,6 +37,10 @@ namespace SandTetris
         [SerializeField] Color32 backgroundColor = new Color32(18, 18, 24, 255);
         [SerializeField] Color32 lineClearFlashColor = new Color32(255, 255, 255, 255);
 
+        [Header("Next Piece Preview")]
+        [SerializeField] RawImage nextPieceDisplayImage;
+        [SerializeField] Color32 previewBackgroundColor = new Color32(30, 30, 38, 255);
+
         [Header("Landing Impact (着地演出)")]
         [SerializeField] Color32 landingFlashColor = new Color32(255, 255, 255, 255);
         [SerializeField] float landingFlashDuration = 0.12f;
@@ -53,6 +57,7 @@ namespace SandTetris
         BoardModel _model;
         BoardPresenter _presenter;
         BoardRenderer _renderer;
+        NextPiecePreviewRenderer _previewRenderer;
         LandingFlashEffect _landingFlash;
         ScreenShakeEffect _screenShake;
         AudioObserver _audio;
@@ -85,6 +90,9 @@ namespace SandTetris
 
             _renderer = new BoardRenderer(widthPx, heightPx) { BackgroundColor = backgroundColor };
             if (displayImage != null) displayImage.texture = _renderer.Texture;
+
+            _previewRenderer = new NextPiecePreviewRenderer(blockSize * 4) { BackgroundColor = previewBackgroundColor };
+            if (nextPieceDisplayImage != null) nextPieceDisplayImage.texture = _previewRenderer.Texture;
 
             _landingFlash = new LandingFlashEffect(_model, landingFlashDuration) { FlashColor = landingFlashColor };
 
@@ -146,6 +154,8 @@ namespace SandTetris
             _landingFlash.ApplyOverlay(_renderer.Buffer, _model.Grid);
 
             _renderer.Upload();
+
+            _previewRenderer.Render(_model.NextPiece);
         }
     }
 }

@@ -37,6 +37,10 @@ namespace SandTetris
         [Networked] public int PieceAnchorX { get; set; }
         [Networked] public int PieceAnchorY { get; set; }
 
+        // ネクストミノ(プレビュー表示用)。位置・回転は不要(常にプレビュー中央に表示するだけなので)
+        [Networked] public int NextPieceShapeIndex { get; set; } = -1;
+        [Networked] public int NextPieceColorIndex { get; set; }
+
         /// <summary>ローカル(自分)のBoardModel。Spawned時に自分のBoardViewから取得する。</summary>
         public BoardModel LocalModel;
 
@@ -94,6 +98,17 @@ namespace SandTetris
                 PieceShapeIndex = -1;
             }
 
+            var nextPiece = LocalModel.NextPiece;
+            if (nextPiece != null)
+            {
+                NextPieceShapeIndex = nextPiece.ShapeIndex;
+                NextPieceColorIndex = nextPiece.ColorIndex;
+            }
+            else
+            {
+                NextPieceShapeIndex = -1;
+            }
+
             // 固定された砂(重いデータ)は、今まで通り間引いて送る。
             _timer += Runner.DeltaTime;
             if (_timer < writeInterval) return;
@@ -131,7 +146,7 @@ namespace SandTetris
 
                 int cellCount = GridWidth * GridHeight;
                 byte[] unpacked = BoardSnapshotCodec.DecodePacked(packed, cellCount);
-                _remoteView.ApplySnapshot(unpacked);
+                _remoteView.ApplySnapshot(unpacked, GridWidth, GridHeight);
             }
 
             // 操作中ミノ(軽量チャンネルから毎フレーム再構築する)
@@ -145,6 +160,17 @@ namespace SandTetris
             else
             {
                 _remoteView.ApplyPiece(null);
+            }
+
+            // ネクストミノ(プレビュー表示用)
+            if (NextPieceShapeIndex >= 0 && _blockSize > 0)
+            {
+                var nextPiece = FallingPiece.CreateFromShape(NextPieceShapeIndex, NextPieceColorIndex, _blockSize, Vector2Int.zero);
+                _remoteView.ApplyNextPiece(nextPiece);
+            }
+            else
+            {
+                _remoteView.ApplyNextPiece(null);
             }
         }
     }
