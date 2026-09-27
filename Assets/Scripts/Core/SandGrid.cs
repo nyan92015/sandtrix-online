@@ -9,7 +9,7 @@ namespace SandTetris
     {
         public bool Occupied;
         public Color32 Color;
-        public byte ColorIndex; // 見た目の色(明暗ノイズあり)とは別に、同色判定に使う「色グループ」
+        public byte ColorIndex; // 色グループ(ライン消去の同色判定に使う)
     }
 
     /// <summary>
@@ -188,9 +188,8 @@ namespace SandTetris
 
         /// <summary>
         /// ミノが着地したとき、そのピクセル群をそのままグリッドに焼き込む。
-        /// positions と colors は同じ順序・同じ数である必要がある(粒ごとに個別の色を持たせるため)。
-        /// colorIndex はピース全体で共通の「色グループ」で、ライン消去の同色判定に使う
-        /// (見た目の色は粒ごとに明暗が違っても、色グループとしては同じものとして繋がる)。
+        /// positions と colors は同じ順序・同じ数である必要がある。
+        /// colorIndex はピース全体で共通の「色グループ」で、ライン消去の同色判定に使う。
         /// </summary>
         public void Bake(System.Collections.Generic.IReadOnlyList<Vector2Int> positions, System.Collections.Generic.IReadOnlyList<Color32> colors, byte colorIndex)
         {

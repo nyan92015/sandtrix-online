@@ -72,21 +72,16 @@ namespace SandTetris
     {
         public Vector2Int Anchor;         // グリッド上の基準座標(ピボット)
         public List<Vector2Int> Offsets;  // Anchor からの相対オフセット(ピクセル単位)
-        public List<Color32> PixelColors; // Offsets と対応する、粒ごとの個別色(輪郭は濃く、内側は明暗ランダム)
+        public List<Color32> PixelColors; // Offsets と対応する、粒ごとの色(単色。全ピクセル同じ色)
         public Color32 Color;             // プレビューのフチ表示や、色の代表値として使う基準色
-        public byte ColorIndex;           // 色グループ(ライン消去の同色判定に使う。見た目の明暗とは別)
+        public byte ColorIndex;           // 色グループ(ライン消去の同色判定に使う)
         public int ShapeIndex;            // どの形か(O型かどうかの判定などに使う)
+        public int RotationSteps;         // 生成時から何回90度回転したか(0〜3)。ネットワーク同期用
 
         // TetrominoShapes.Shapes の中での O型(2x2の正方形)のインデックス
         public const int OShapeIndex = 1;
 
         public bool IsSquare => ShapeIndex == OShapeIndex;
-
-        // 輪郭(ミノの外周1ピクセル)を暗くする度合い
-        const float EdgeShade = 0.6f;
-        // 内側の粒をランダムに明暗させる範囲(1.0が基準色)
-        const float GrainShadeMin = 0.85f;
-        const float GrainShadeMax = 1.15f;
 
         // 形バッグ: 7種類を1個ずつ、シャッフルして配る(いわゆる7-bag方式)
         static readonly ShuffleBag ShapeBag = new ShuffleBag(BuildShapeTemplate());
@@ -113,9 +108,19 @@ namespace SandTetris
 
         public static FallingPiece CreateRandom(int blockSize, Vector2Int spawnAnchor)
         {
-            var piece = new FallingPiece();
             int shapeIndex = ShapeBag.Next();
             int colorIndex = ColorBag.Next();
+            return CreateFromShape(shapeIndex, colorIndex, blockSize, spawnAnchor);
+        }
+
+        /// <summary>
+        /// 形・色・位置を指定してミノを生成する(ランダム要素なし)。
+        /// ネットワーク越しに「形index・色index・回転数・位置」という軽いデータだけを受け取り、
+        /// 受信側で同じ見た目のミノを再現するために使う。
+        /// </summary>
+        public static FallingPiece CreateFromShape(int shapeIndex, int colorIndex, int blockSize, Vector2Int spawnAnchor)
+        {
+            var piece = new FallingPiece();
             piece.ShapeIndex = shapeIndex;
             var blocks = TetrominoShapes.Shapes[shapeIndex];
 
@@ -137,8 +142,6 @@ namespace SandTetris
                 }
             }
 
-            var pixelSet = new HashSet<Vector2Int>(pixels);
-
             var pivot = new Vector2Int((int)(sumX / pixels.Count), (int)(sumY / pixels.Count));
 
             var baseColor = TetrominoShapes.Colors[colorIndex];
@@ -149,29 +152,29 @@ namespace SandTetris
             foreach (var p in pixels)
             {
                 piece.Offsets.Add(p - pivot);
-
-                bool isEdge = !pixelSet.Contains(p + Vector2Int.up) ||
-                              !pixelSet.Contains(p + Vector2Int.down) ||
-                              !pixelSet.Contains(p + Vector2Int.left) ||
-                              !pixelSet.Contains(p + Vector2Int.right);
-
-                float shade = isEdge ? EdgeShade : Random.Range(GrainShadeMin, GrainShadeMax);
-                piece.PixelColors.Add(Shade(baseColor, shade));
+                piece.PixelColors.Add(baseColor);
             }
 
             piece.Anchor = spawnAnchor;
             piece.Color = baseColor;
             piece.ColorIndex = (byte)colorIndex;
+            piece.RotationSteps = 0;
             return piece;
         }
 
-        static Color32 Shade(Color32 c, float factor)
+        /// <summary>
+        /// CreateFromShape で基本形を作った直後に、指定回数だけ回転を適用する。
+        /// ネットワーク越しに届いた RotationSteps を再現するために使う。
+        /// </summary>
+        public static FallingPiece CreateFromShapeWithRotation(int shapeIndex, int colorIndex, int blockSize, Vector2Int spawnAnchor, int rotationSteps)
         {
-            return new Color32(
-                (byte)Mathf.Clamp(Mathf.RoundToInt(c.r * factor), 0, 255),
-                (byte)Mathf.Clamp(Mathf.RoundToInt(c.g * factor), 0, 255),
-                (byte)Mathf.Clamp(Mathf.RoundToInt(c.b * factor), 0, 255),
-                c.a);
+            var piece = CreateFromShape(shapeIndex, colorIndex, blockSize, spawnAnchor);
+            for (int i = 0; i < rotationSteps; i++)
+            {
+                piece.Offsets = piece.GetRotatedOffsets(1);
+            }
+            piece.RotationSteps = ((rotationSteps % 4) + 4) % 4;
+            return piece;
         }
 
         public IEnumerable<Vector2Int> WorldPositions()

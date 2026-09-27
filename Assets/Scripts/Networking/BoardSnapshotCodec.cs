@@ -11,38 +11,17 @@ namespace SandTetris
         /// 5状態(空+4色)しかないことを利用して、1マスを3ビットに詰め込んでエンコードする。
         /// 1バイトに詰め込むより約37.5%のサイズで済む。
         /// Fusionの Networked配列(位置ベースで差分を検出する仕組み)と組み合わせて使う前提。
-        /// 固定された砂(SandGrid)だけでなく、操作中のミノ(まだ焼き込まれていない)も重ねて含める。
+        /// 操作中のミノは含めない(位置がなめらかに動くため、別の軽量なチャンネルで高頻度に送る)。
         /// </summary>
-        public static byte[] EncodePacked(BoardModel model)
+        public static byte[] EncodePacked(SandGrid grid)
         {
-            var raw = BuildRawWithCurrentPiece(model);
-            return PackBits(raw);
-        }
-
-        /// <summary>グリッド+操作中ミノを、1マス1バイト(0=空、1〜4=色グループ)の生配列にする。</summary>
-        static byte[] BuildRawWithCurrentPiece(BoardModel model)
-        {
-            var grid = model.Grid;
             var raw = new byte[grid.Cells.Length];
             for (int i = 0; i < grid.Cells.Length; i++)
             {
                 var cell = grid.Cells[i];
                 raw[i] = cell.Occupied ? (byte)(cell.ColorIndex + 1) : (byte)0;
             }
-
-            var piece = model.CurrentPiece;
-            if (piece != null)
-            {
-                foreach (var o in piece.Offsets)
-                {
-                    var p = piece.Anchor + o;
-                    if (grid.InBounds(p.x, p.y))
-                    {
-                        raw[grid.Index(p.x, p.y)] = (byte)(piece.ColorIndex + 1);
-                    }
-                }
-            }
-            return raw;
+            return PackBits(raw);
         }
 
         static byte[] PackBits(byte[] raw)

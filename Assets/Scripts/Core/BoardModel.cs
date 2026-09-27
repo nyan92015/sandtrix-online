@@ -115,6 +115,7 @@ namespace SandTetris
             if (!CanPlace(rotated, CurrentPiece.Anchor)) return false;
 
             CurrentPiece.Offsets = rotated;
+            CurrentPiece.RotationSteps = ((CurrentPiece.RotationSteps + (dir > 0 ? 1 : -1)) % 4 + 4) % 4;
             OnPieceRotated?.Invoke();
             return true;
         }

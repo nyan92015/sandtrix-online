@@ -20,6 +20,7 @@ namespace SandTetris
 
         BoardRenderer _renderer;
         byte[] _latestSnapshot;
+        FallingPiece _latestPiece;
 
         void Start()
         {
@@ -36,11 +37,21 @@ namespace SandTetris
             _latestSnapshot = snapshot;
         }
 
+        /// <summary>
+        /// PlayerNetworkSync.Render から、軽量チャンネルの情報を元に再構築したミノを渡してもらう想定。
+        /// null なら「今は表示するミノがない」という意味(着地直後の一瞬など)。
+        /// </summary>
+        public void ApplyPiece(FallingPiece piece)
+        {
+            _latestPiece = piece;
+        }
+
         void Update()
         {
             if (_latestSnapshot == null || _renderer == null) return;
 
-            _renderer.DrawShadedFromSnapshot(_latestSnapshot, TetrominoShapes.Colors);
+            _renderer.DrawFromSnapshot(_latestSnapshot, TetrominoShapes.Colors);
+            _renderer.DrawPiece(_latestPiece);
             _renderer.Upload();
         }
     }

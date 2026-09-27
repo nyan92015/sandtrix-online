@@ -417,7 +417,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SandTetris.RemoteBoardView
   gridWidthInBlocks: 10
   gridHeightInBlocks: 20
-  blockSize: 6
+  blockSize: 8
   displayImage: {fileID: 1754433697}
   backgroundColor:
     serializedVersion: 2
@@ -468,11 +468,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SandTetris.BoardView
   gridWidthInBlocks: 10
   gridHeightInBlocks: 20
-  blockSize: 6
+  blockSize: 8
   fallInterval: 0.1
   softDropInterval: 0.01
   moveRepeatInterval: 0.01
-  gravityInterval: 0.06
+  gravityInterval: 0.03
   diagonalMoveChance: 0.25
   fallMoveChance: 0.75
   clearFlashDuration: 0.08
@@ -727,7 +727,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -480, y: 0}
-  m_SizeDelta: {x: 400, y: 800}
+  m_SizeDelta: {x: 500, y: 1000}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1551894194
 MonoBehaviour:
@@ -834,7 +834,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 480, y: 0}
-  m_SizeDelta: {x: 400, y: 800}
+  m_SizeDelta: {x: 500, y: 1000}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:

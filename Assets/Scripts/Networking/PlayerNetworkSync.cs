@@ -30,9 +30,17 @@ namespace SandTetris
         [Networked] public int GridHeight { get; set; }
         [Networked] public int PackedLength { get; set; }
 
+        // --- ここからミノ専用の軽量チャンネル。毎ティック更新するので滑らかに動く ---
+        [Networked] public int PieceShapeIndex { get; set; } = -1; // -1 = ミノなし(着地直後の空白フレームなど)
+        [Networked] public int PieceColorIndex { get; set; }
+        [Networked] public int PieceRotationSteps { get; set; }
+        [Networked] public int PieceAnchorX { get; set; }
+        [Networked] public int PieceAnchorY { get; set; }
+
         /// <summary>ローカル(自分)のBoardModel。Spawned時に自分のBoardViewから取得する。</summary>
         public BoardModel LocalModel;
 
+        int _blockSize;
         RemoteBoardView _remoteView;
         float _timer;
 
@@ -42,9 +50,13 @@ namespace SandTetris
         /// </summary>
         public override void Spawned()
         {
+            // blockSizeは送信側・受信側どちらでもミノの再構築に必要なので、
+            // StateAuthorityの有無に関わらずシーン上のBoardViewから取得しておく。
+            var localView = FindFirstObjectByType<BoardView>();
+            if (localView != null) _blockSize = localView.BlockSize;
+
             if (Object.HasStateAuthority)
             {
-                var localView = FindFirstObjectByType<BoardView>();
                 if (localView != null)
                 {
                     LocalModel = localView.Model;
@@ -66,11 +78,28 @@ namespace SandTetris
         {
             if (!Object.HasStateAuthority || LocalModel == null) return;
 
+            // ミノの位置・形・回転は軽いデータなので、間引かずに毎ティック更新する。
+            // これにより相手側でも「ワープ」せず、なめらかに動いて見える。
+            var piece = LocalModel.CurrentPiece;
+            if (piece != null)
+            {
+                PieceShapeIndex = piece.ShapeIndex;
+                PieceColorIndex = piece.ColorIndex;
+                PieceRotationSteps = piece.RotationSteps;
+                PieceAnchorX = piece.Anchor.x;
+                PieceAnchorY = piece.Anchor.y;
+            }
+            else
+            {
+                PieceShapeIndex = -1;
+            }
+
+            // 固定された砂(重いデータ)は、今まで通り間引いて送る。
             _timer += Runner.DeltaTime;
             if (_timer < writeInterval) return;
             _timer = 0f;
 
-            byte[] packed = BoardSnapshotCodec.EncodePacked(LocalModel);
+            byte[] packed = BoardSnapshotCodec.EncodePacked(LocalModel.Grid);
             if (packed.Length > MaxPackedBytes)
             {
                 Debug.LogError($"[PlayerNetworkSync] 盤面データが MaxPackedBytes({MaxPackedBytes})を超えています: {packed.Length}バイト。MaxPackedBytesを増やしてください。");
@@ -92,15 +121,31 @@ namespace SandTetris
         public override void Render()
         {
             if (Object.HasStateAuthority) return;
-            if (_remoteView == null || PackedLength <= 0) return;
-            if (GridWidth <= 0 || GridHeight <= 0) return;
+            if (_remoteView == null) return;
 
-            var packed = new byte[PackedLength];
-            for (int i = 0; i < PackedLength; i++) packed[i] = PackedBoard[i];
+            // 固定された砂
+            if (PackedLength > 0 && GridWidth > 0 && GridHeight > 0)
+            {
+                var packed = new byte[PackedLength];
+                for (int i = 0; i < PackedLength; i++) packed[i] = PackedBoard[i];
 
-            int cellCount = GridWidth * GridHeight;
-            byte[] unpacked = BoardSnapshotCodec.DecodePacked(packed, cellCount);
-            _remoteView.ApplySnapshot(unpacked);
+                int cellCount = GridWidth * GridHeight;
+                byte[] unpacked = BoardSnapshotCodec.DecodePacked(packed, cellCount);
+                _remoteView.ApplySnapshot(unpacked);
+            }
+
+            // 操作中ミノ(軽量チャンネルから毎フレーム再構築する)
+            if (PieceShapeIndex >= 0 && _blockSize > 0)
+            {
+                var anchor = new Vector2Int(PieceAnchorX, PieceAnchorY);
+                var piece = FallingPiece.CreateFromShapeWithRotation(
+                    PieceShapeIndex, PieceColorIndex, _blockSize, anchor, PieceRotationSteps);
+                _remoteView.ApplyPiece(piece);
+            }
+            else
+            {
+                _remoteView.ApplyPiece(null);
+            }
         }
     }
 }
