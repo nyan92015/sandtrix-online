@@ -66,7 +66,8 @@ namespace SandTetris
 
         /// <summary>
         /// 待機中だった NextPiece を CurrentPiece に昇格させ、新しい NextPiece を用意する。
-        /// 置けなければゲームオーバー。
+        /// ミノは盤面の外(上端よりさらに上)から出現するため、生成した瞬間に
+        /// 何かにぶつかることは基本的にない。ゲームオーバー判定は LockCurrentPiece 側で行う。
         /// </summary>
         public void SpawnNext()
         {
@@ -74,22 +75,23 @@ namespace SandTetris
             CurrentPiece.Anchor = _spawnAnchor;
             NextPiece = FallingPiece.CreateRandom(_blockSize, Vector2Int.zero);
 
-            if (!CanPlace(CurrentPiece.Offsets, CurrentPiece.Anchor))
-            {
-                IsGameOver = true;
-                OnGameOver?.Invoke();
-                return;
-            }
-
             OnPieceSpawned?.Invoke();
         }
 
+        /// <summary>
+        /// 指定オフセット群をその位置に置けるかどうかを判定する。
+        /// 左右の壁・盤面の底は通常通りブロックするが、盤面の上端より上(y &lt; 0)は
+        /// まだ何もない空間として扱い、常に「置ける」とみなす
+        /// (ミノは盤面の外側、上端よりさらに上から出現して落ちてくるため)。
+        /// </summary>
         public bool CanPlace(List<Vector2Int> offsets, Vector2Int anchor)
         {
             foreach (var o in offsets)
             {
                 var p = anchor + o;
-                if (!Grid.InBounds(p.x, p.y)) return false;
+                if (p.x < 0 || p.x >= Grid.Width) return false; // 左右の壁
+                if (p.y >= Grid.Height) return false;           // 盤面の底
+                if (p.y < 0) continue;                          // 盤面より上は障害物なし
                 if (Grid.IsOccupied(p.x, p.y)) return false;
             }
             return true;
@@ -139,16 +141,31 @@ namespace SandTetris
 
         /// <summary>
         /// 現在のミノをグリッドに焼き込み、次のミノを出現させる。
+        /// 着地した瞬間、盤面の上端(y=0)より上にはみ出ている部分が1つでもあれば、
+        /// そこでゲームオーバーとする(はみ出た部分自体は Grid.Bake 側で自動的に無視される)。
         /// </summary>
         public void LockCurrentPiece()
         {
             if (IsGameOver || CurrentPiece == null) return;
 
             var positions = new List<Vector2Int>(CurrentPiece.Offsets.Count);
-            foreach (var o in CurrentPiece.Offsets) positions.Add(CurrentPiece.Anchor + o);
+            bool overflowsTop = false;
+            foreach (var o in CurrentPiece.Offsets)
+            {
+                var p = CurrentPiece.Anchor + o;
+                positions.Add(p);
+                if (p.y < 0) overflowsTop = true;
+            }
 
             Grid.Bake(positions, CurrentPiece.PixelColors, CurrentPiece.ColorIndex);
             OnPieceLanded?.Invoke(positions, CurrentPiece.PixelColors, CurrentPiece.ColorIndex);
+
+            if (overflowsTop)
+            {
+                IsGameOver = true;
+                OnGameOver?.Invoke();
+                return;
+            }
 
             SpawnNext();
         }

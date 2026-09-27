@@ -70,7 +70,9 @@ namespace SandTetris
         {
             int widthPx = gridWidthInBlocks * blockSize;
             int heightPx = gridHeightInBlocks * blockSize;
-            var spawnAnchor = new Vector2Int(widthPx / 2, blockSize * 2);
+            // 盤面の上端(y=0)よりさらに上、完全に見えない位置から出現させる。
+            // -blockSize*2 は、今の形状(最大でも縦3ブロック)なら確実に画面外に収まる余裕を持たせた値。
+            var spawnAnchor = new Vector2Int(widthPx / 2, -blockSize * 2);
 
             _model = new BoardModel(widthPx, heightPx, blockSize, spawnAnchor);
 
