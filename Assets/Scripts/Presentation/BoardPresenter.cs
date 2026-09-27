@@ -14,6 +14,7 @@ namespace SandTetris
         public BoardModel Model { get; }
         public BoardPresenterConfig Config { get; }
         public IBoardState CurrentState { get; private set; }
+        public ScoreTracker Score { get; }
 
         // PlayingStateなど各ステートが読み書きするタイマー類。
         // Presenterが「箱」として保持し、実際の使い方は各ステートに委ねる。
@@ -31,6 +32,7 @@ namespace SandTetris
         {
             Model = model;
             Config = config;
+            Score = new ScoreTracker(model);
 
             Model.Grid.DiagonalMoveChance = config.DiagonalMoveChance;
             Model.Grid.FallMoveChance = config.FallMoveChance;
@@ -47,9 +49,14 @@ namespace SandTetris
             CurrentState.Enter();
         }
 
-        /// <summary>毎フレーム呼ぶ。現在のステートの更新処理を1回進める。</summary>
+        /// <summary>
+        /// 毎フレーム呼ぶ。現在のステートの更新処理を1回進める。
+        /// スコアの倍率減衰は、ライン消去演出などで一時停止している間も止めずに進める
+        /// (演出は数百ミリ秒程度なので、無視できる差として扱う)。
+        /// </summary>
         public void Tick(float deltaTime)
         {
+            Score.Tick(deltaTime);
             CurrentState?.Update(deltaTime);
         }
 

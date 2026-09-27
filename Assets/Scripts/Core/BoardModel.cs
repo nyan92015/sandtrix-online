@@ -109,14 +109,33 @@ namespace SandTetris
             return true;
         }
 
+        /// <summary>
+        /// ミノを回転させる。原作の仕様に合わせ、壁や既存の砂との衝突で回転自体が失敗することはない
+        /// (どこでも、いつでも回転できる)。ただし回転後に盤面の左右にはみ出た場合は、
+        /// はみ出た分だけ横に押し戻して、盤面の外に居座ったままにならないようにする
+        /// (いわゆる簡易的な壁キック)。ゲームオーバー後は何もしない。
+        /// </summary>
         public bool TryRotate(int dir)
         {
-            if (IsGameOver || CurrentPiece == null || CurrentPiece.IsSquare) return false;
+            if (IsGameOver || CurrentPiece == null) return false;
 
             var rotated = CurrentPiece.GetRotatedOffsets(dir);
-            if (!CanPlace(rotated, CurrentPiece.Anchor)) return false;
+            var anchor = CurrentPiece.Anchor;
+
+            int minX = int.MaxValue;
+            int maxX = int.MinValue;
+            foreach (var o in rotated)
+            {
+                int x = anchor.x + o.x;
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+            }
+
+            if (minX < 0) anchor.x -= minX;                          // 左にはみ出た分だけ右へ
+            if (maxX >= Grid.Width) anchor.x -= (maxX - Grid.Width + 1); // 右にはみ出た分だけ左へ
 
             CurrentPiece.Offsets = rotated;
+            CurrentPiece.Anchor = anchor;
             CurrentPiece.RotationSteps = ((CurrentPiece.RotationSteps + (dir > 0 ? 1 : -1)) % 4 + 4) % 4;
             OnPieceRotated?.Invoke();
             return true;
@@ -127,15 +146,36 @@ namespace SandTetris
         /// 着地処理そのものは行わない(呼び出し側が false を見て LockCurrentPiece を呼ぶ)。
         /// 「落下タイミングの管理」と「落下できるかの判定」を分けることで、
         /// 通常落下・ソフトドロップ・(将来の)ハードドロップから同じメソッドを再利用できる。
+        ///
+        /// 回転が壁際の衝突判定なしで行える仕様のため、回転直後は横方向にはみ出た状態になりうる。
+        /// ここでは横方向のはみ出しを「落下を妨げるもの」として扱わない
+        /// (でないと、はみ出た瞬間に誤って着地したと判定されてしまう)。
         /// </summary>
         public bool TryStepDown()
         {
             if (IsGameOver || CurrentPiece == null) return false;
 
             var below = CurrentPiece.Anchor + new Vector2Int(0, 1);
-            if (!CanPlace(CurrentPiece.Offsets, below)) return false;
+            if (!CanFall(CurrentPiece.Offsets, below)) return false;
 
             CurrentPiece.Anchor = below;
+            return true;
+        }
+
+        /// <summary>
+        /// 落下専用の衝突判定。横方向のはみ出しは無視し、盤面の底と、
+        /// 盤面内にある既存の砂とだけ衝突するかを見る。
+        /// </summary>
+        bool CanFall(List<Vector2Int> offsets, Vector2Int anchor)
+        {
+            foreach (var o in offsets)
+            {
+                var p = anchor + o;
+                if (p.x < 0 || p.x >= Grid.Width) continue; // 横のはみ出しは無視
+                if (p.y >= Grid.Height) return false;       // 盤面の底
+                if (p.y < 0) continue;                      // 盤面より上は障害物なし
+                if (Grid.IsOccupied(p.x, p.y)) return false;
+            }
             return true;
         }
 

@@ -10,6 +10,7 @@ namespace SandTetris
         public float SoftDropInterval = 0.04f;
         public float MoveRepeatInterval = 0.08f;
         public float GravityInterval = 0.03f;
+        public float MinGravityInterval = 0.01f; // これより短くはしない(処理負荷の安全弁)
 
         public float DiagonalMoveChance = 0.35f;
         public float FallMoveChance = 0.85f;

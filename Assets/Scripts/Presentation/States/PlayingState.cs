@@ -38,8 +38,9 @@ namespace SandTetris
                 model.TryRotate(1);
             }
 
-            // 落下
-            float fallInterval = _presenter.SoftDropHeld ? cfg.SoftDropInterval : cfg.FallInterval;
+            // 落下(SpeedMultiplierが上がるほど間隔が短くなり、速く落ちるようになる。上限なし)
+            float baseFallInterval = _presenter.SoftDropHeld ? cfg.SoftDropInterval : cfg.FallInterval;
+            float fallInterval = _presenter.Score.ScaleFallInterval(baseFallInterval);
             _presenter.FallTimer += deltaTime;
             if (_presenter.FallTimer >= fallInterval)
             {
@@ -52,11 +53,12 @@ namespace SandTetris
                 }
             }
 
-            // 砂の物理シミュレーション(実時間の経過分だけまとめて進める)
+            // 砂の物理シミュレーション(こちらは MinGravityInterval で下限を設け、無限に重くならないようにする)
+            float gravityInterval = _presenter.Score.ScaleGravityInterval(cfg.GravityInterval, cfg.MinGravityInterval);
             _presenter.GravityTimer += deltaTime;
-            while (_presenter.GravityTimer >= cfg.GravityInterval)
+            while (_presenter.GravityTimer >= gravityInterval)
             {
-                _presenter.GravityTimer -= cfg.GravityInterval;
+                _presenter.GravityTimer -= gravityInterval;
                 model.SimulatePhysicsStep();
             }
 

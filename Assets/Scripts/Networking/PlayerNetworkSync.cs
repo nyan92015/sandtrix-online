@@ -66,12 +66,23 @@ namespace SandTetris
                     LocalModel = localView.Model;
                     GridWidth = LocalModel.Grid.Width;
                     GridHeight = LocalModel.Grid.Height;
+
+                    // 着地した瞬間、次のネットワーク更新ですぐに盤面(固定砂)を送れるようにする。
+                    // これをしないと、「ミノが消えた」情報の方が「新しく固まった砂」より先に届いてしまい、
+                    // 相手の画面で着地の瞬間に一瞬何も表示されない空白ができてしまう。
+                    LocalModel.OnPieceLanded += HandlePieceLanded;
                 }
             }
             else
             {
                 _remoteView = FindFirstObjectByType<RemoteBoardView>();
             }
+        }
+
+        void HandlePieceLanded(System.Collections.Generic.IReadOnlyList<Vector2Int> positions, System.Collections.Generic.IReadOnlyList<Color32> colors, byte colorIndex)
+        {
+            // タイマーを間引き間隔いっぱいまで進めておくことで、次の FixedUpdateNetwork で確実に送信させる
+            _timer = writeInterval;
         }
 
         /// <summary>

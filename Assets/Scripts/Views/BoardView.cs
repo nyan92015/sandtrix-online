@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace SandTetris
 {
@@ -24,6 +25,7 @@ namespace SandTetris
         [SerializeField] float softDropInterval = 0.04f;
         [SerializeField] float moveRepeatInterval = 0.08f;
         [SerializeField] float gravityInterval = 0.03f;
+        [SerializeField] float minGravityInterval = 0.01f; // 加速してもこれより短くはしない
         [Range(0f, 1f)]
         [SerializeField] float diagonalMoveChance = 0.35f;
         [Range(0f, 1f)]
@@ -54,6 +56,12 @@ namespace SandTetris
         [Range(0f, 1f)]
         [SerializeField] float sfxVolume = 1f;
 
+        [Header("Score UI")]
+        [SerializeField] TMP_Text scoreText;
+        [SerializeField] TMP_Text multiplierText;
+        [SerializeField] TMP_Text linesClearedText;
+        [SerializeField] Slider bucketGaugeSlider;
+
         BoardModel _model;
         BoardPresenter _presenter;
         BoardRenderer _renderer;
@@ -61,6 +69,7 @@ namespace SandTetris
         LandingFlashEffect _landingFlash;
         ScreenShakeEffect _screenShake;
         AudioObserver _audio;
+        ScoreUIObserver _scoreUI;
 
         /// <summary>自分のBoardModel。PlayerNetworkSyncが送信元データとして参照する。</summary>
         public BoardModel Model => _model;
@@ -82,6 +91,7 @@ namespace SandTetris
                 SoftDropInterval = softDropInterval,
                 MoveRepeatInterval = moveRepeatInterval,
                 GravityInterval = gravityInterval,
+                MinGravityInterval = minGravityInterval,
                 DiagonalMoveChance = diagonalMoveChance,
                 FallMoveChance = fallMoveChance,
                 ClearFlashDuration = clearFlashDuration,
@@ -111,6 +121,8 @@ namespace SandTetris
                 LineClearSound = lineClearSound,
                 Volume = sfxVolume,
             };
+
+            _scoreUI = new ScoreUIObserver(_presenter.Score, scoreText, multiplierText, linesClearedText, bucketGaugeSlider);
         }
 
         void Update()
@@ -121,6 +133,7 @@ namespace SandTetris
             _presenter.Tick(dt);
             _landingFlash.Tick(dt);
             _screenShake.Tick(dt);
+            _scoreUI.Tick();
 
             Render();
         }

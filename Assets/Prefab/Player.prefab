@@ -64,7 +64,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 3df8f5d1f1d634961963ad6774501629, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SandTetris.PlayerNetworkSync
-  writeInterval: 0.1
+  writeInterval: 0.05
   _PackedBoard: 
   _GridWidth: 0
   _GridHeight: 0
@@ -74,3 +74,5 @@ MonoBehaviour:
   _PieceRotationSteps: 0
   _PieceAnchorX: 0
   _PieceAnchorY: 0
+  _NextPieceShapeIndex: -1
+  _NextPieceColorIndex: 0
