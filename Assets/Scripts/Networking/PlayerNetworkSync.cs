@@ -41,9 +41,16 @@ namespace SandTetris
         [Networked] public int NextPieceShapeIndex { get; set; } = -1;
         [Networked] public int NextPieceColorIndex { get; set; }
 
+        // --- スコア関連。数値だけなので軽く、毎ティック更新しても問題ない ---
+        [Networked] public int NetScore { get; set; }
+        [Networked] public int NetMultiplier { get; set; } = 1;
+        [Networked] public int NetLinesCleared { get; set; }
+        [Networked] public float NetBucketFillRatio { get; set; }
+
         /// <summary>ローカル(自分)のBoardModel。Spawned時に自分のBoardViewから取得する。</summary>
         public BoardModel LocalModel;
 
+        ScoreTracker _localScore;
         int _blockSize;
         RemoteBoardView _remoteView;
         float _timer;
@@ -66,6 +73,7 @@ namespace SandTetris
                     LocalModel = localView.Model;
                     GridWidth = LocalModel.Grid.Width;
                     GridHeight = LocalModel.Grid.Height;
+                    _localScore = localView.Score;
 
                     // 着地した瞬間、次のネットワーク更新ですぐに盤面(固定砂)を送れるようにする。
                     // これをしないと、「ミノが消えた」情報の方が「新しく固まった砂」より先に届いてしまい、
@@ -118,6 +126,14 @@ namespace SandTetris
             else
             {
                 NextPieceShapeIndex = -1;
+            }
+
+            if (_localScore != null)
+            {
+                NetScore = _localScore.TotalScore;
+                NetMultiplier = _localScore.CurrentMultiplier;
+                NetLinesCleared = _localScore.LinesCleared;
+                NetBucketFillRatio = _localScore.CurrentBucketFillRatio;
             }
 
             // 固定された砂(重いデータ)は、今まで通り間引いて送る。
@@ -183,6 +199,9 @@ namespace SandTetris
             {
                 _remoteView.ApplyNextPiece(null);
             }
+
+            // スコア関連
+            _remoteView.ApplyScore(NetScore, NetMultiplier, NetLinesCleared, NetBucketFillRatio);
         }
     }
 }

@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace SandTetris
 {
@@ -22,6 +23,12 @@ namespace SandTetris
         [SerializeField] RawImage nextPieceDisplayImage;
         [SerializeField] Color32 previewBackgroundColor = new Color32(30, 30, 38, 255);
 
+        [Header("Score Display")]
+        [SerializeField] TMP_Text scoreText;
+        [SerializeField] TMP_Text multiplierText;
+        [SerializeField] TMP_Text linesClearedText;
+        [SerializeField] Slider bucketGaugeSlider;
+
         BoardRenderer _renderer;
         NextPiecePreviewRenderer _previewRenderer;
         byte[] _latestSnapshot;
@@ -38,6 +45,13 @@ namespace SandTetris
 
             _previewRenderer = new NextPiecePreviewRenderer(blockSize * 4) { BackgroundColor = previewBackgroundColor };
             if (nextPieceDisplayImage != null) nextPieceDisplayImage.texture = _previewRenderer.Texture;
+
+            if (bucketGaugeSlider != null)
+            {
+                bucketGaugeSlider.minValue = 0f;
+                bucketGaugeSlider.maxValue = 1f;
+                bucketGaugeSlider.interactable = false;
+            }
         }
 
         void CreateRenderer(int widthPx, int heightPx)
@@ -81,6 +95,17 @@ namespace SandTetris
         public void ApplyNextPiece(FallingPiece piece)
         {
             _latestNextPiece = piece;
+        }
+
+        /// <summary>
+        /// PlayerNetworkSync.Render から、相手のスコア関連の値を渡してもらう想定。
+        /// </summary>
+        public void ApplyScore(int totalScore, int multiplier, int linesCleared, float bucketFillRatio)
+        {
+            if (scoreText != null) scoreText.text = totalScore.ToString();
+            if (multiplierText != null) multiplierText.text = $"x{multiplier}";
+            if (linesClearedText != null) linesClearedText.text = linesCleared.ToString();
+            if (bucketGaugeSlider != null) bucketGaugeSlider.value = bucketFillRatio;
         }
 
         void Update()

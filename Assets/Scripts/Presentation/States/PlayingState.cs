@@ -39,12 +39,15 @@ namespace SandTetris
             }
 
             // 落下(SpeedMultiplierが上がるほど間隔が短くなり、速く落ちるようになる。上限なし)
+            // whileにしているのは、フレームレートが低い環境で「1フレームにつき1マスまで」という
+            // 隠れた制限がかかってしまうのを防ぐため(低フレームレートだと1フレームの経過時間が
+            // fallIntervalの何倍にもなりうるので、その分をまとめて処理する必要がある)。
             float baseFallInterval = _presenter.SoftDropHeld ? cfg.SoftDropInterval : cfg.FallInterval;
             float fallInterval = _presenter.Score.ScaleFallInterval(baseFallInterval);
             _presenter.FallTimer += deltaTime;
-            if (_presenter.FallTimer >= fallInterval)
+            while (_presenter.FallTimer >= fallInterval)
             {
-                _presenter.FallTimer = 0f;
+                _presenter.FallTimer -= fallInterval;
                 if (!model.TryStepDown())
                 {
                     model.LockCurrentPiece();

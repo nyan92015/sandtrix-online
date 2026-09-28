@@ -74,6 +74,7 @@ namespace SandTetris
         /// <summary>自分のBoardModel。PlayerNetworkSyncが送信元データとして参照する。</summary>
         public BoardModel Model => _model;
         public int BlockSize => blockSize;
+        public ScoreTracker Score => _presenter?.Score;
 
         void Start()
         {
