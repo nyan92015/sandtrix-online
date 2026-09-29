@@ -1170,6 +1170,19 @@ MonoBehaviour:
   backgroundColor:
     serializedVersion: 2
     rgba: 4279767570
+  concreteColor:
+    serializedVersion: 2
+    rgba: 4285490790
+  ashColor:
+    serializedVersion: 2
+    rgba: 4282466668
+  frameColor:
+    serializedVersion: 2
+    rgba: 4280557086
+  frameThicknessPx: 4
+  warningColor:
+    serializedVersion: 2
+    rgba: 3357417130
   nextPieceDisplayImage: {fileID: 1944515858}
   previewBackgroundColor:
     serializedVersion: 2
@@ -1300,10 +1313,13 @@ MonoBehaviour:
   gridWidthInBlocks: 10
   gridHeightInBlocks: 20
   blockSize: 8
-  fallInterval: 0.06
-  softDropInterval: 0.006
-  moveRepeatInterval: 0.008
+  fallInterval: 0.03
+  softDropSpeedMultiplier: 3
+  softDropPointsPerSecond: 100
+  moveRepeatInterval: 0.006
   gravityInterval: 0.03
+  ashGravityInterval: 0.06
+  ashLifetimeSeconds: 10
   minGravityInterval: 0.005
   diagonalMoveChance: 0.25
   fallMoveChance: 0.75
@@ -1330,7 +1346,24 @@ MonoBehaviour:
   landSound: {fileID: 8300000, guid: b64b27cf8fbca45ac91d9d9c257209b3, type: 3}
   rotateSound: {fileID: 8300000, guid: bf7f3cf1ab9f64d848a6cf5bfc5f7a3e, type: 3}
   lineClearSound: {fileID: 8300000, guid: 29f2434cdf9c849d1b14a1b908398098, type: 3}
-  sfxVolume: 1
+  sfxVolume: 0.6
+  contestWindowSeconds: 10
+  contestThreshold: 2000
+  groundRiseSeconds: 3
+  groundPushBaseCost: 3000
+  groundColor:
+    serializedVersion: 2
+    rgba: 4285490790
+  ashColor:
+    serializedVersion: 2
+    rgba: 4282466668
+  frameColor:
+    serializedVersion: 2
+    rgba: 4281215530
+  frameThicknessPx: 4
+  warningColor:
+    serializedVersion: 2
+    rgba: 3357351338
   scoreText: {fileID: 546714853}
   multiplierText: {fileID: 528856057}
   linesClearedText: {fileID: 1967557298}
@@ -1385,7 +1418,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -100, y: 300}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1188203127
 MonoBehaviour:
@@ -1716,7 +1749,7 @@ RectTransform:
   m_GameObject: {fileID: 1551894192}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.2, y: 1.2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1358308393}
@@ -1724,7 +1757,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: -480, y: 0}
-  m_SizeDelta: {x: 500, y: 1000}
+  m_SizeDelta: {x: 440, y: 800}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1551894194
 MonoBehaviour:
@@ -1898,7 +1931,7 @@ RectTransform:
   m_GameObject: {fileID: 1754433696}
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_LocalScale: {x: 1.2, y: 1.2, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1358308393}
@@ -1906,7 +1939,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 480, y: 0}
-  m_SizeDelta: {x: 500, y: 1000}
+  m_SizeDelta: {x: 440, y: 800}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1762615246
 GameObject:
@@ -2240,7 +2273,7 @@ RectTransform:
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
   m_AnchoredPosition: {x: 100, y: 300}
-  m_SizeDelta: {x: 100, y: 100}
+  m_SizeDelta: {x: 150, y: 150}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &1967557296
 GameObject:

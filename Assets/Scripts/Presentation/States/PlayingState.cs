@@ -21,14 +21,28 @@ namespace SandTetris
             var model = _presenter.Model;
             var cfg = _presenter.Config;
 
-            // 左右移動(リピート付き)
+            // 左右移動(リピート付き)。リピート間隔もライン数に応じて短くなる(落下と同じ倍率)。
+            // 落下と同じく、フレームレートが低くても間隔通りの速さで動くよう、
+            // 「1フレームにつき1回まで」ではなく、溜まった時間の分だけまとめて動かす。
             if (_presenter.MoveDirection != 0)
             {
-                _presenter.MoveTimer -= deltaTime;
-                if (_presenter.MoveKeyDownThisFrame || _presenter.MoveTimer <= 0f)
+                float moveInterval = _presenter.Score.ScaleInterval(cfg.MoveRepeatInterval);
+                if (moveInterval < 0.001f) moveInterval = 0.001f; // 0以下だと下のwhileが終わらなくなるので下限を設ける
+
+                if (_presenter.MoveKeyDownThisFrame)
                 {
-                    _presenter.MoveTimer = cfg.MoveRepeatInterval;
+                    // 押した瞬間は必ず1回動き、次のリピートまでの待ち時間を始める
                     model.TryMove(_presenter.MoveDirection);
+                    _presenter.MoveTimer = moveInterval;
+                }
+                else
+                {
+                    _presenter.MoveTimer -= deltaTime;
+                    while (_presenter.MoveTimer <= 0f)
+                    {
+                        model.TryMove(_presenter.MoveDirection);
+                        _presenter.MoveTimer += moveInterval; // 0に戻さず加算するので、はみ出し分が次に持ち越される
+                    }
                 }
             }
 
@@ -42,8 +56,22 @@ namespace SandTetris
             // whileにしているのは、フレームレートが低い環境で「1フレームにつき1マスまで」という
             // 隠れた制限がかかってしまうのを防ぐため(低フレームレートだと1フレームの経過時間が
             // fallIntervalの何倍にもなりうるので、その分をまとめて処理する必要がある)。
-            float baseFallInterval = _presenter.SoftDropHeld ? cfg.SoftDropInterval : cfg.FallInterval;
-            float fallInterval = _presenter.Score.ScaleFallInterval(baseFallInterval);
+            if (_presenter.SoftDropHeld)
+            {
+                // ソフトドロップを押している間は、その時間に応じて少しずつ得点が入る
+                _presenter.Score.AddSoftDropTime(deltaTime);
+            }
+
+            // 通常の落下間隔(ライン数に応じて加速済み)。ソフトドロップ中は、これを「通常の落下のN倍の速さ」に縮める。
+            // ソフトドロップ専用の間隔は持たず、通常の落下に対する倍率だけを固定しているので、
+            // 通常の落下が加速すれば、ソフトドロップも同じ割合で一緒に速くなる。
+            float fallInterval = _presenter.Score.ScaleInterval(cfg.FallInterval);
+            if (_presenter.SoftDropHeld)
+            {
+                float softDropMultiplier = cfg.SoftDropSpeedMultiplier;
+                if (softDropMultiplier < 0.01f) softDropMultiplier = 0.01f; // 0以下だと割り算が壊れるので下限を設ける
+                fallInterval /= softDropMultiplier;
+            }
             _presenter.FallTimer += deltaTime;
             while (_presenter.FallTimer >= fallInterval)
             {
@@ -62,7 +90,7 @@ namespace SandTetris
             while (_presenter.GravityTimer >= gravityInterval)
             {
                 _presenter.GravityTimer -= gravityInterval;
-                model.SimulatePhysicsStep();
+                model.SimulatePhysicsStep(gravityInterval);
             }
 
             // ライン消去チェック

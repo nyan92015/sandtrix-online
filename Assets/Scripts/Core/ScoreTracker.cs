@@ -68,10 +68,10 @@ namespace SandTetris
         public float SpeedMultiplier => 1f + 0.1f * (LinesCleared / 10);
 
         /// <summary>
-        /// 「間隔(秒)」を SpeedMultiplier に応じて縮めた値を返す。上限(下限)なし。
-        /// ミノの落下速度など、「際限なく速くなっていい」ものに使う。
+        /// 「間隔(秒)」を SpeedMultiplier に応じて縮めた値を返す。下限なし。
+        /// ミノの落下・左右移動のリピートなど、「際限なく速くなっていい」ものに使う。
         /// </summary>
-        public float ScaleFallInterval(float baseInterval)
+        public float ScaleInterval(float baseInterval)
         {
             return baseInterval / SpeedMultiplier;
         }
@@ -90,6 +90,32 @@ namespace SandTetris
         public ScoreTracker(BoardModel model)
         {
             model.OnLinesFound += HandleLinesFound;
+        }
+
+        /// <summary>
+        /// ソフトドロップを1秒押し続けたときに入る点数。
+        /// コンボの倍率は掛からず、バケツにも入らない、素の得点として合計スコアにだけ加算される。
+        /// </summary>
+        public float SoftDropPointsPerSecond = 100f;
+
+        // 1フレームあたりの得点は小数(60fpsなら約1.67点)になるので、端数を貯めておき、
+        // 1点以上になった分だけ合計スコアに加算する(切り捨てで取りこぼさないため)。
+        float _softDropPointAccumulator;
+
+        /// <summary>
+        /// ソフトドロップを押していた時間(秒)を渡すと、その分の得点を合計スコアに加算する。
+        /// ソフトドロップ中のフレームだけ、毎フレーム呼ぶ想定。
+        /// </summary>
+        public void AddSoftDropTime(float deltaTime)
+        {
+            _softDropPointAccumulator += SoftDropPointsPerSecond * deltaTime;
+
+            int whole = (int)_softDropPointAccumulator;
+            if (whole <= 0) return;
+
+            _softDropPointAccumulator -= whole;
+            TotalScore += whole;
+            OnScoreChanged?.Invoke(TotalScore);
         }
 
         void HandleLinesFound(IReadOnlyList<int> clearedIndices)

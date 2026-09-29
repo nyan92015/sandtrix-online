@@ -18,6 +18,11 @@ namespace SandTetris
         [Header("Rendering")]
         [SerializeField] RawImage displayImage;
         [SerializeField] Color32 backgroundColor = new Color32(18, 18, 24, 255);
+        [SerializeField] Color32 concreteColor = new Color32(90, 90, 95, 255);   // 自分側(BoardView)のGround Colorと揃えること
+        [SerializeField] Color32 ashColor = new Color32(150, 150, 155, 255);     // 自分側(BoardView)のAsh Colorと揃えること
+        [SerializeField] Color32 frameColor = new Color32(30, 30, 36, 255);     // 自分側(BoardView)のFrame Colorと揃えること
+        [SerializeField] int frameThicknessPx = 4;                              // 自分側(BoardView)のFrame Thickness Pxと揃えること
+        [SerializeField] Color32 warningColor = new Color32(220, 40, 40, 255);  // 自分側(BoardView)のWarning Colorと揃えること
 
         [Header("Next Piece Preview")]
         [SerializeField] RawImage nextPieceDisplayImage;
@@ -34,6 +39,7 @@ namespace SandTetris
         byte[] _latestSnapshot;
         FallingPiece _latestPiece;
         FallingPiece _latestNextPiece;
+        float _warningLevel;
         int _currentWidthPx;
         int _currentHeightPx;
 
@@ -58,7 +64,14 @@ namespace SandTetris
         {
             _currentWidthPx = widthPx;
             _currentHeightPx = heightPx;
-            _renderer = new BoardRenderer(widthPx, heightPx) { BackgroundColor = backgroundColor };
+            _renderer = new BoardRenderer(widthPx, heightPx, frameThicknessPx)
+            {
+                BackgroundColor = backgroundColor,
+                ConcreteColor = concreteColor,
+                AshColor = ashColor,
+                FrameColor = frameColor,
+                WarningColor = warningColor,
+            };
             if (displayImage != null) displayImage.texture = _renderer.Texture;
         }
 
@@ -108,12 +121,28 @@ namespace SandTetris
             if (bucketGaugeSlider != null) bucketGaugeSlider.value = bucketFillRatio;
         }
 
+        /// <summary>
+        /// PlayerNetworkSync.Render から、相手の PendingWarningLevel(段数)を渡してもらう想定。
+        /// 相手が「守備側で基準点を超えている」ときだけ正の値になる。
+        /// </summary>
+        public void ApplyGroundWarning(float level)
+        {
+            _warningLevel = level;
+        }
+
         void Update()
         {
             if (_latestSnapshot == null || _renderer == null) return;
 
             _renderer.DrawFromSnapshot(_latestSnapshot, TetrominoShapes.Colors);
             _renderer.DrawPiece(_latestPiece);
+
+            if (_warningLevel > 0f)
+            {
+                int warningHeightPx = Mathf.RoundToInt(_warningLevel * blockSize);
+                _renderer.DrawGroundWarning(warningHeightPx, Time.time);
+            }
+
             _renderer.Upload();
 
             _previewRenderer?.Render(_latestNextPiece);

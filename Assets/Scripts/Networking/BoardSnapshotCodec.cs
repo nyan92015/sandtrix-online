@@ -19,7 +19,10 @@ namespace SandTetris
             for (int i = 0; i < grid.Cells.Length; i++)
             {
                 var cell = grid.Cells[i];
-                raw[i] = cell.Occupied ? (byte)(cell.ColorIndex + 1) : (byte)0;
+                // 0=空、1〜4=色グループ、5=コンクリート、6=灰(どれも3ビットで表せる範囲なので、通信量は増えない)
+                if (cell.IsConcrete) raw[i] = 5;
+                else if (cell.IsAsh) raw[i] = 6;
+                else raw[i] = cell.Occupied ? (byte)(cell.ColorIndex + 1) : (byte)0;
             }
             return PackBits(raw);
         }

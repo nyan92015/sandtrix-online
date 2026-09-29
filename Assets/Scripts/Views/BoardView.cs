@@ -22,9 +22,12 @@ namespace SandTetris
 
         [Header("Timing (秒)")]
         [SerializeField] float fallInterval = 0.6f;
-        [SerializeField] float softDropInterval = 0.04f;
+        [SerializeField] float softDropSpeedMultiplier = 3f; // ソフトドロップ中は、通常の落下の何倍の速さで落ちるか
+        [SerializeField] float softDropPointsPerSecond = 100f; // ソフトドロップを1秒押し続けたときの得点
         [SerializeField] float moveRepeatInterval = 0.08f;
         [SerializeField] float gravityInterval = 0.03f;
+        [SerializeField] float ashGravityInterval = 0.15f; // 灰が1マス落ちる間隔(秒)。砂の重力とは別・ライン数の影響も受けない固定値
+        [SerializeField] float ashLifetimeSeconds = 6f;    // 灰が消えるまでの時間(秒)。砂の下に埋もれて止まっても、この時間で強制的に消える
         [SerializeField] float minGravityInterval = 0.01f; // 加速してもこれより短くはしない
         [Range(0f, 1f)]
         [SerializeField] float diagonalMoveChance = 0.35f;
@@ -56,6 +59,17 @@ namespace SandTetris
         [Range(0f, 1f)]
         [SerializeField] float sfxVolume = 1f;
 
+        [Header("Seesaw Ground (シーソー式の地面)")]
+        [SerializeField] float contestWindowSeconds = 10f; // 攻撃が始まってから確定するまでの秒数
+        [SerializeField] int contestThreshold = 2000;      // 攻撃が成立するための基準点(起点・確定・逆転の3か所に共通)
+        [SerializeField] float groundRiseSeconds = 3f;     // 攻撃が確定してから、地面が目標の高さまで上がりきる秒数
+        [SerializeField] float groundPushBaseCost = 3000f; // 圧力から高さを決めるときの、1段目の基準コスト
+        [SerializeField] Color32 groundColor = new Color32(90, 90, 95, 255);
+        [SerializeField] Color32 ashColor = new Color32(150, 150, 155, 255); // 上がりきって崩れたあとの灰の色
+        [SerializeField] Color32 frameColor = new Color32(30, 30, 36, 255); // 額縁(盤面の外側の帯)の、通常時の色
+        [SerializeField] int frameThicknessPx = 4;                          // 額縁の幅(ピクセル)
+        [SerializeField] Color32 warningColor = new Color32(220, 40, 40, 255); // 警告中の色(額縁・境界線・縞、共通)
+
         [Header("Score UI")]
         [SerializeField] TMP_Text scoreText;
         [SerializeField] TMP_Text multiplierText;
@@ -75,6 +89,16 @@ namespace SandTetris
         public BoardModel Model => _model;
         public int BlockSize => blockSize;
         public ScoreTracker Score => _presenter?.Score;
+        public GroundLevelController Ground => _presenter?.Ground;
+
+        /// <summary>
+        /// 相手の合計スコアを伝える。PlayerNetworkSync が、ネットワークで受け取った値を毎フレーム渡す。
+        /// これをもとにシーソー式の地面の高さが決まる。
+        /// </summary>
+        public void SetOpponentScore(int opponentTotalScore)
+        {
+            _presenter?.Ground.SetOpponentScore(opponentTotalScore);
+        }
 
         void Start()
         {
@@ -89,19 +113,36 @@ namespace SandTetris
             var config = new BoardPresenterConfig
             {
                 FallInterval = fallInterval,
-                SoftDropInterval = softDropInterval,
+                SoftDropSpeedMultiplier = softDropSpeedMultiplier,
                 MoveRepeatInterval = moveRepeatInterval,
                 GravityInterval = gravityInterval,
+                AshGravityInterval = ashGravityInterval,
+                AshLifetimeSeconds = ashLifetimeSeconds,
                 MinGravityInterval = minGravityInterval,
                 DiagonalMoveChance = diagonalMoveChance,
                 FallMoveChance = fallMoveChance,
                 ClearFlashDuration = clearFlashDuration,
                 LandingFreezeDuration = landingFreezeDuration,
                 LineClearFreezeDuration = lineClearFreezeDuration,
+                BlockSize = blockSize,
+                SoftDropPointsPerSecond = softDropPointsPerSecond,
+                ContestWindowSeconds = contestWindowSeconds,
+                ContestThreshold = contestThreshold,
+                GroundRiseSeconds = groundRiseSeconds,
+                GroundPushBaseCost = groundPushBaseCost,
+                GroundColor = groundColor,
+                AshColor = ashColor,
             };
             _presenter = new BoardPresenter(_model, config);
 
-            _renderer = new BoardRenderer(widthPx, heightPx) { BackgroundColor = backgroundColor };
+            _renderer = new BoardRenderer(widthPx, heightPx, frameThicknessPx)
+            {
+                BackgroundColor = backgroundColor,
+                ConcreteColor = groundColor,
+                AshColor = ashColor,
+                FrameColor = frameColor,
+                WarningColor = warningColor,
+            };
             if (displayImage != null) displayImage.texture = _renderer.Texture;
 
             _previewRenderer = new NextPiecePreviewRenderer(blockSize * 4) { BackgroundColor = previewBackgroundColor };
@@ -167,7 +208,15 @@ namespace SandTetris
                 _renderer.DrawHighlight(_model.Grid.LastClearedIndices, lineClearFlashColor);
             }
 
-            _landingFlash.ApplyOverlay(_renderer.Buffer, _model.Grid);
+            _landingFlash.ApplyOverlay(_renderer, _model.Grid);
+
+            // せめぎ合いで、自分が守備側かつ基準点を超えているときだけ、警告表示を重ねる
+            float warningLevel = _presenter.Ground.PendingWarningLevel;
+            if (warningLevel > 0f)
+            {
+                int warningHeightPx = Mathf.RoundToInt(warningLevel * blockSize);
+                _renderer.DrawGroundWarning(warningHeightPx, Time.time);
+            }
 
             _renderer.Upload();
 

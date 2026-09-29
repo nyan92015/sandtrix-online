@@ -47,10 +47,16 @@ namespace SandTetris
         [Networked] public int NetLinesCleared { get; set; }
         [Networked] public float NetBucketFillRatio { get; set; }
 
+        // 自分が守備側かつ基準点を超えているときの、「今の圧力のまま確定したら、どこまで上がるか」。
+        // 相手側の警告表示(赤枠+流れる縞)に使う。0なら警告なし。
+        [Networked] public float NetGroundWarningLevel { get; set; }
+
         /// <summary>ローカル(自分)のBoardModel。Spawned時に自分のBoardViewから取得する。</summary>
         public BoardModel LocalModel;
 
         ScoreTracker _localScore;
+        GroundLevelController _localGround;
+        BoardView _myOwnBoardView;
         int _blockSize;
         RemoteBoardView _remoteView;
         float _timer;
@@ -65,6 +71,7 @@ namespace SandTetris
             // StateAuthorityの有無に関わらずシーン上のBoardViewから取得しておく。
             var localView = FindFirstObjectByType<BoardView>();
             if (localView != null) _blockSize = localView.BlockSize;
+            _myOwnBoardView = localView;
 
             if (Object.HasStateAuthority)
             {
@@ -74,6 +81,7 @@ namespace SandTetris
                     GridWidth = LocalModel.Grid.Width;
                     GridHeight = LocalModel.Grid.Height;
                     _localScore = localView.Score;
+                    _localGround = localView.Ground;
 
                     // 着地した瞬間、次のネットワーク更新ですぐに盤面(固定砂)を送れるようにする。
                     // これをしないと、「ミノが消えた」情報の方が「新しく固まった砂」より先に届いてしまい、
@@ -134,6 +142,11 @@ namespace SandTetris
                 NetMultiplier = _localScore.CurrentMultiplier;
                 NetLinesCleared = _localScore.LinesCleared;
                 NetBucketFillRatio = _localScore.CurrentBucketFillRatio;
+            }
+
+            if (_localGround != null)
+            {
+                NetGroundWarningLevel = _localGround.PendingWarningLevel;
             }
 
             // 固定された砂(重いデータ)は、今まで通り間引いて送る。
@@ -202,6 +215,12 @@ namespace SandTetris
 
             // スコア関連
             _remoteView.ApplyScore(NetScore, NetMultiplier, NetLinesCleared, NetBucketFillRatio);
+
+            // 警告表示(相手が守備側で、基準点を超えているときの「予定の高さ」)
+            _remoteView.ApplyGroundWarning(NetGroundWarningLevel);
+
+            // 相手のスコアを、自分自身の盤面にも伝える(シーソー式の地面の高さを決めるため)
+            _myOwnBoardView?.SetOpponentScore(NetScore);
         }
     }
 }

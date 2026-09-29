@@ -36,9 +36,10 @@ namespace SandTetris
 
         /// <summary>
         /// 描画バッファにフラッシュを重ね書きする。BoardRenderer.DrawBoard の後、
-        /// Upload の前に呼ぶこと。
+        /// Upload の前に呼ぶこと。座標変換(額縁のオフセット)は renderer に任せるので、
+        /// このクラス自身は盤面の実際の描画レイアウト(額縁の有無・太さ)を知らなくていい。
         /// </summary>
-        public void ApplyOverlay(Color32[] buffer, SandGrid grid)
+        public void ApplyOverlay(BoardRenderer renderer, SandGrid grid)
         {
             if (_timer <= 0f) return;
 
@@ -46,9 +47,11 @@ namespace SandTetris
             foreach (var p in _positions)
             {
                 if (!grid.InBounds(p.x, p.y)) continue;
-                int idx = grid.Index(p.x, p.y);
-                if (!grid.Cells[idx].Occupied) continue; // すでに崩れて移動した粒はスキップ
-                buffer[idx] = Color32.Lerp(buffer[idx], FlashColor, t);
+                int gridIdx = grid.Index(p.x, p.y);
+                if (!grid.Cells[gridIdx].Occupied) continue; // すでに崩れて移動した粒はスキップ
+
+                int bufIdx = renderer.BufferIndex(p.x, p.y);
+                renderer.Buffer[bufIdx] = Color32.Lerp(renderer.Buffer[bufIdx], FlashColor, t);
             }
         }
     }

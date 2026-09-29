@@ -202,18 +202,32 @@ namespace SandTetris
 
             if (overflowsTop)
             {
-                IsGameOver = true;
-                OnGameOver?.Invoke();
+                ForceGameOver();
                 return;
             }
 
             SpawnNext();
         }
 
-        /// <summary>砂の物理シミュレーションを1ステップ進める。呼ぶ間隔はPresenterが管理する。</summary>
-        public void SimulatePhysicsStep()
+        /// <summary>
+        /// 強制的にゲームオーバーにする。すでにゲームオーバーなら何もしない(二重発行防止)。
+        /// ミノがはみ出たとき以外に、シーソー式の地面が盤面全体に達したときなどにも使う。
+        /// </summary>
+        public void ForceGameOver()
         {
-            Grid.SimulateStep();
+            if (IsGameOver) return;
+            IsGameOver = true;
+            OnGameOver?.Invoke();
+        }
+
+        /// <summary>
+        /// 砂の物理シミュレーションを1ステップ進める。呼ぶ間隔はPresenterが管理する。
+        /// deltaTime: この1回が表す実時間(秒)。灰専用の固定間隔の積み立てに使うので、
+        /// 呼び出し側が実際に使っている間隔(砂の重力間隔)をそのまま渡すこと。
+        /// </summary>
+        public void SimulatePhysicsStep(float deltaTime)
+        {
+            Grid.SimulateStep(deltaTime);
         }
 
         /// <summary>
