@@ -17,6 +17,19 @@ namespace SandTetris
         Phase _phase;
         float _timer;
 
+        /// <summary>
+        /// Freeze開始から、実際に消去される(ApplyLineClearが呼ばれる)までの合計時間(秒)。
+        /// View側の演出が、このステートの本物のタイマーとズレないように、そのまま参照する用。
+        /// </summary>
+        public float TotalDuration => _freezeDuration + _flashDuration;
+
+        /// <summary>
+        /// Freeze開始からの経過時間(秒)。TotalDurationに対する割合を計算するのに使う。
+        /// </summary>
+        public float TotalElapsed => _phase == Phase.Freeze
+            ? (_freezeDuration - _timer)
+            : (_freezeDuration + (_flashDuration - _timer));
+
         public LineClearState(BoardPresenter presenter, float freezeDuration, float flashDuration)
         {
             _presenter = presenter;
