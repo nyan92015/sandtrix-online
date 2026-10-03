@@ -21,12 +21,12 @@ namespace SandTetris
             var model = _presenter.Model;
             var cfg = _presenter.Config;
 
-            // 左右移動(リピート付き)。リピート間隔もライン数に応じて短くなる(落下と同じ倍率)。
-            // 落下と同じく、フレームレートが低くても間隔通りの速さで動くよう、
+            // 左右移動(リピート付き)。本家と同じく、ライン数による加速の対象には含めない(常に一定の速さ)。
+            // フレームレートが低くても間隔通りの速さで動くよう、
             // 「1フレームにつき1回まで」ではなく、溜まった時間の分だけまとめて動かす。
             if (_presenter.MoveDirection != 0)
             {
-                float moveInterval = _presenter.Score.ScaleInterval(cfg.MoveRepeatInterval);
+                float moveInterval = cfg.MoveRepeatInterval;
                 if (moveInterval < 0.001f) moveInterval = 0.001f; // 0以下だと下のwhileが終わらなくなるので下限を設ける
 
                 if (_presenter.MoveKeyDownThisFrame)
@@ -62,16 +62,23 @@ namespace SandTetris
                 _presenter.Score.AddSoftDropTime(deltaTime);
             }
 
-            // 通常の落下間隔(ライン数に応じて加速済み)。ソフトドロップ中は、これを「通常の落下のN倍の速さ」に縮める。
-            // ソフトドロップ専用の間隔は持たず、通常の落下に対する倍率だけを固定しているので、
-            // 通常の落下が加速すれば、ソフトドロップも同じ割合で一緒に速くなる。
-            float fallInterval = _presenter.Score.ScaleInterval(cfg.FallInterval);
+            // 落下速度は「間隔(秒/ピクセル)」ではなく、いったん「速さ(ピクセル/秒)」で考える。
+            // 本家がそうしているのと同じく、ソフトドロップは掛け算ではなく、
+            // 「決まった速さを、そのまま足す」方式にする(加速の影響を受けない固定量)。
+            float normalSpeedPxPerSec = 1f / _presenter.Score.ScaleInterval(cfg.FallInterval);
+            float effectiveSpeedPxPerSec = normalSpeedPxPerSec;
+
             if (_presenter.SoftDropHeld)
             {
-                float softDropMultiplier = cfg.SoftDropSpeedMultiplier;
-                if (softDropMultiplier < 0.01f) softDropMultiplier = 0.01f; // 0以下だと割り算が壊れるので下限を設ける
-                fallInterval /= softDropMultiplier;
+                // 左右に移動していない間はより多く、移動中はやや少なめに足す(本家の仕様)
+                bool movingHorizontally = _presenter.MoveDirection != 0;
+                effectiveSpeedPxPerSec += movingHorizontally
+                    ? cfg.SoftDropBonusSpeedMovingPxPerSec
+                    : cfg.SoftDropBonusSpeedIdlePxPerSec;
             }
+
+            if (effectiveSpeedPxPerSec < 0.01f) effectiveSpeedPxPerSec = 0.01f; // 0以下だと割り算が壊れるので下限を設ける
+            float fallInterval = 1f / effectiveSpeedPxPerSec;
             _presenter.FallTimer += deltaTime;
             while (_presenter.FallTimer >= fallInterval)
             {

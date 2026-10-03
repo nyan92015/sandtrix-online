@@ -1,14 +1,6 @@
 namespace SandTetris
 {
-    /// <summary>
-    /// MVPのPresenter。BoardModelを保持し、ステートマシンを介して
-    /// 「今何をすべきか」を管理する。Unity非依存(MonoBehaviourを継承しない)。
-    ///
-    /// View側(MonoBehaviour)は、毎フレーム Tick を呼び、その前に入力の状態を
-    /// SetMoveInput / SetRotateInput / SetSoftDrop で伝える、という使い方を想定する。
-    /// 描画やSEはBoardModelのイベントを直接購読する別のObserverが行うため、
-    /// Presenter自身は「いつ・何をすべきか」の管理に専念する。
-    /// </summary>
+
     public class BoardPresenter
     {
         public BoardModel Model { get; }
@@ -33,6 +25,10 @@ namespace SandTetris
         {
             Model = model;
             Config = config;
+
+            // 全てのミノの色がここを経由するので、ここで一度設定しておくだけでいい
+            FallingPiece.NormalBrightenAmount = config.NormalBrightenAmount;
+
             Score = new ScoreTracker(model)
             {
                 SoftDropPointsPerSecond = config.SoftDropPointsPerSecond,
@@ -43,7 +39,6 @@ namespace SandTetris
                 RiseSeconds = config.GroundRiseSeconds,
                 PushBaseCost = config.GroundPushBaseCost,
                 GroundColor = config.GroundColor,
-                AshColor = config.AshColor,
             };
             Ground.Contest.WindowSeconds = config.ContestWindowSeconds;
             Ground.Contest.Threshold = config.ContestThreshold;
@@ -76,6 +71,7 @@ namespace SandTetris
         {
             Score.Tick(deltaTime);
             Ground.Tick(deltaTime, Score.TotalScore);
+            Model.Fever.Tick(deltaTime);
             CurrentState?.Update(deltaTime);
         }
 

@@ -18,8 +18,7 @@ namespace SandTetris
         [Header("Rendering")]
         [SerializeField] RawImage displayImage;
         [SerializeField] Color32 backgroundColor = new Color32(18, 18, 24, 255);
-        [SerializeField] Color32 concreteColor = new Color32(90, 90, 95, 255);   // 自分側(BoardView)のGround Colorと揃えること
-        [SerializeField] Color32 ashColor = new Color32(150, 150, 155, 255);     // 自分側(BoardView)のAsh Colorと揃えること
+        [SerializeField] Color32 concreteColor = new Color32(90, 90, 95, 255);   // 自分側(BoardView)のGround Colorと揃えること。灰にもこの同じ色を使う
         [SerializeField] Color32 frameColor = new Color32(30, 30, 36, 255);     // 自分側(BoardView)のFrame Colorと揃えること
         [SerializeField] int frameThicknessPx = 4;                              // 自分側(BoardView)のFrame Thickness Pxと揃えること
         [SerializeField] Color32 warningColor = new Color32(220, 40, 40, 255);  // 自分側(BoardView)のWarning Colorと揃えること
@@ -34,8 +33,26 @@ namespace SandTetris
         [SerializeField] TMP_Text linesClearedText;
         [SerializeField] Slider bucketGaugeSlider;
 
+        [Header("Special Piece (特別なミノの見た目。自分側と同じ値にすること)")]
+        [SerializeField] Color32 specialPieceEdgeColor = new Color32(255, 255, 255, 255);
+        [SerializeField, Range(0f, 1f)] float specialPieceEdgeMinBrightness = 0.3f;
+        [SerializeField, Range(0f, 1f)] float specialPieceEdgeMaxBrightness = 1.0f;
+        [SerializeField] float specialPiecePulseSpeed = 3f;
+        [SerializeField] float specialPieceBrightBias = 0.6f;
+        [SerializeField] Color32 specialPieceColorRed = new Color32(150, 30, 30, 255);
+        [SerializeField] Color32 specialPieceColorBlue = new Color32(30, 80, 150, 255);
+        [SerializeField] Color32 specialPieceColorYellow = new Color32(150, 120, 20, 255);
+        [SerializeField] Color32 specialPieceColorGreen = new Color32(30, 120, 60, 255);
+        [SerializeField, Range(0f, 2f)] float specialPieceSaturationBoost = 0f; // 自分側(BoardView)のSpecial Piece Saturation Boostと揃えること
+
+        [Header("Shake (揺れ。自分側と同じ値にすること)")]
+        [SerializeField] RectTransform shakeTarget;
+        [SerializeField] float shakeDuration = 0.12f;
+        [SerializeField] float shakeMagnitude = 8f;
+
         BoardRenderer _renderer;
         NextPiecePreviewRenderer _previewRenderer;
+        ScreenShakeEffect _screenShake;
         byte[] _latestSnapshot;
         FallingPiece _latestPiece;
         FallingPiece _latestNextPiece;
@@ -58,6 +75,8 @@ namespace SandTetris
                 bucketGaugeSlider.maxValue = 1f;
                 bucketGaugeSlider.interactable = false;
             }
+
+            _screenShake = new ScreenShakeEffect(shakeTarget, shakeDuration, shakeMagnitude);
         }
 
         void CreateRenderer(int widthPx, int heightPx)
@@ -68,9 +87,16 @@ namespace SandTetris
             {
                 BackgroundColor = backgroundColor,
                 ConcreteColor = concreteColor,
-                AshColor = ashColor,
+                AshColor = concreteColor,
                 FrameColor = frameColor,
                 WarningColor = warningColor,
+                SpecialPieceEdgeColor = specialPieceEdgeColor,
+                SpecialPieceEdgeMinBrightness = specialPieceEdgeMinBrightness,
+                SpecialPieceEdgeMaxBrightness = specialPieceEdgeMaxBrightness,
+                SpecialPiecePulseSpeed = specialPiecePulseSpeed,
+                SpecialPieceBrightBias = specialPieceBrightBias,
+                SpecialPieceColors = new[] { specialPieceColorRed, specialPieceColorBlue, specialPieceColorYellow, specialPieceColorGreen },
+                SpecialPieceSaturationBoost = specialPieceSaturationBoost,
             };
             if (displayImage != null) displayImage.texture = _renderer.Texture;
         }
@@ -130,8 +156,18 @@ namespace SandTetris
             _warningLevel = level;
         }
 
+        /// <summary>
+        /// 相手側で着地・感染などが起きた瞬間、RPC経由で1回だけ呼んでもらう想定。
+        /// </summary>
+        public void TriggerShake()
+        {
+            _screenShake?.Trigger();
+        }
+
         void Update()
         {
+            _screenShake?.Tick(Time.deltaTime);
+
             if (_latestSnapshot == null || _renderer == null) return;
 
             _renderer.DrawFromSnapshot(_latestSnapshot, TetrominoShapes.Colors);
